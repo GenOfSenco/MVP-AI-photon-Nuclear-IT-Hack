@@ -1,0 +1,32 @@
+{
+  "model": "neural_synthesis_v3",
+  "base_steps": 8,
+  "refine_steps": 4,
+  "shape": [
+    128,
+    128
+  ],
+  "wavelength_nm": 532,
+  "pixel_pitch_um": 10,
+  "depths_mm": [
+    24.1,
+    25.3,
+    26.5,
+    27.7
+  ],
+  "preprocessing": "strict PNG L 8-bit; per-plane max normalization",
+  "weights": {
+    "init": {
+      "file": "init.pt",
+      "sha256": "5e4c239e51c1b80fb30ac803bed23258c2c7678bae0ebae7e7d70065427ccdbe"
+    },
+    "update": {
+      "file": "update.pt",
+      "sha256": "edebc43194b4f96a788d1b6fc88abcb86987d1ef6f41399a0aa9b5c47b04b86f"
+    },
+    "refiner": {
+      "file": "refiner.pt",
+      "sha256": "e1ee215b3ca44de60f05f656d8396700a2e48cc939326e46e15ce62a9253f63b"
+    }
+  }
+}

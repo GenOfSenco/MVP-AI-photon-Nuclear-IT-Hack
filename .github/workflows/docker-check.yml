@@ -1,0 +1,111 @@
+name: Docker CPU acceptance
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docker-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check repository paths and weights
+        shell: bash
+        run: |
+          if git grep -InE '(^|[^[:alnum:]])[A-Za-z]:[\\/]' -- submission weights Dockerfile requirements.txt README.md; then
+            echo "::error::Absolute Windows path found"
+            exit 1
+          fi
+          for weight in init update refiner; do
+            git ls-files --error-unmatch "weights/$weight.pt"
+            test -s "weights/$weight.pt"
+          done
+
+      - name: Build image
+        run: |
+          mkdir -p "$RUNNER_TEMP/doe-logs"
+          set -o pipefail
+          docker build --progress=plain -t neural-doe . 2>&1 | tee "$RUNNER_TEMP/doe-logs/build.log"
+        shell: bash
+
+      - name: Run CPU CLI offline and verify PNG8
+        timeout-minutes: 3
+        shell: bash
+        run: |
+          work="$RUNNER_TEMP/doe-io"
+          mkdir -p "$work/input" "$work/output"
+          docker run --rm --network none --user "$(id -u):$(id -g)" \
+            -v "$work/input:/input" neural-doe python -c '
+          from PIL import Image, ImageDraw
+          for i in range(1, 5):
+              im = Image.new("L", (128, 128))
+              ImageDraw.Draw(im).ellipse((10*i, 16, 10*i+48, 90), fill=255)
+              im.save(f"/input/plane_{i}.png")
+          '
+          docker run --rm --network none --user "$(id -u):$(id -g)" \
+            -e DOE_DEVICE=cpu -v "$work/input:/input:ro" -v "$work/output:/output" \
+            neural-doe python -m submission.predict \
+            --images /input/plane_1.png /input/plane_2.png /input/plane_3.png /input/plane_4.png \
+            --output /output/doe_phase.png 2>&1 | tee "$RUNNER_TEMP/doe-logs/cli.log"
+          docker run --rm --network none -v "$work/output:/output:ro" neural-doe python -c '
+          from pathlib import Path
+          from PIL import Image
+          import torch
+          assert torch.version.cuda is None, "Expected CPU-only PyTorch"
+          for name in ("data", "dataset", "DATASET_BUNDLE", "VALIDATION_PRIVATE"):
+              assert not (Path("/app") / name).exists(), f"Unexpected runtime directory: {name}"
+          p = Path("/output/doe_phase.png")
+          assert list(p.parent.iterdir()) == [p]
+          assert p.read_bytes()[24:26] == bytes((8, 0)), "Expected grayscale PNG8"
+          with Image.open(p) as im:
+              assert im.format == "PNG" and im.size == (128, 128) and im.mode == "L"
+              im.verify()
+          print("PASS offline CPU CLI and PNG8")
+          '
+
+      - name: Verify web server over HTTP
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          docker run -d --name doe-web --network none neural-doe
+          for attempt in $(seq 1 30); do
+            if docker exec doe-web python -c 'import urllib.request as u; r=u.urlopen("http://127.0.0.1:7860/", timeout=2); assert r.status == 200 and b"AI PHOTONICS" in r.read()'; then
+              echo "PASS HTTP"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::Web server did not respond"
+          exit 1
+
+      - name: Collect diagnostics
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/doe-logs"
+          docker logs doe-web > "$RUNNER_TEMP/doe-logs/web.log" 2>&1 || true
+          docker rm -f doe-web >/dev/null 2>&1 || true
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-diagnostics
+          path: ${{ runner.temp }}/doe-logs
+
+      - name: Publish acceptance status
+        if: always()
+        shell: bash
+        run: |
+          if [ "${{ job.status }}" = success ]; then
+            echo 'Docker CPU acceptance: PASS' | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Docker CPU acceptance: FAIL' | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
+

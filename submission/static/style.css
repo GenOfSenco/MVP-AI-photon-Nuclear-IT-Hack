@@ -1,0 +1,31 @@
+:root { color-scheme: light; font: 16px/1.5 system-ui,sans-serif; color:#152638; background:#eef3f7 }
+* { box-sizing:border-box }
+[hidden] { display:none !important }
+body { margin:0 }
+.shell { width:min(1160px, calc(100% - 32px)); margin:auto }
+header { background:#102e43; color:white; padding:34px 0 30px; border-bottom:5px solid #33b5a6 }
+.eyebrow { color:#92dfd4; font-size:.82rem; letter-spacing:.14em; font-weight:700 }
+h1 { margin:.3rem 0; font-size:clamp(1.6rem,4vw,2.5rem) }
+h2,h3,p { margin-top:0 }
+header p { margin-bottom:0; color:#d9e7ed }
+section { background:white; border-radius:14px; padding:24px; margin:22px 0; border:1px solid #d5e1e8 }
+.muted { color:#455d70 }
+.grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin:16px 0 }
+.card { padding:12px; background:#f4f8fa; border:1px solid #d8e4eb; border-radius:10px; min-width:0 }
+.card label { display:block; font-weight:700; margin-bottom:6px }
+.card input { width:100%; font-size:.82rem }
+.preview { margin-top:10px; min-height:128px; display:grid; place-items:center; border-radius:6px; background:#e3ebf0; color:#496579 }
+img { image-rendering:pixelated; object-fit:contain; max-width:100%; display:block }
+.preview img,#mask { width:128px; height:128px }
+button,.button { background:#12655d; color:white; border:1px solid #12655d; border-radius:7px; padding:9px 14px; font:inherit; font-weight:650; cursor:pointer; text-decoration:none; display:inline-block }
+.secondary { background:#eef7f6; color:#154f4a }
+button:disabled { opacity:.55; cursor:wait }
+.actions { display:flex; gap:8px; flex-wrap:wrap }
+.result-summary { display:flex; align-items:center; gap:20px }
+.duo { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:8px 0 }
+figure { margin:0; font-size:.82rem }
+figcaption { margin-bottom:4px }
+#error { padding:10px; color:#8c221e; background:#fff0ee; border-radius:6px }
+#status:empty { display:none }
+@media (max-width:800px) { .grid { grid-template-columns:repeat(2,minmax(0,1fr)) } }
+@media (max-width:470px) { .grid { grid-template-columns:1fr } section { padding:15px } .result-summary { align-items:flex-start; flex-direction:column } }
